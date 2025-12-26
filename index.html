@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>건강 점수 계산기</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #fff; padding: 20px; }
+    .container { max-width: 500px; margin: auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { text-align: center; font-size: 24px; margin-bottom: 20px; }
+    .group { margin-top: 18px; }
+    label { font-weight: bold; font-size: 15px; }
+    .options { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .option-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background: #f2f2f2;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .option-btn.selected {
+      background: #0068ff;
+      color: white;
+      font-weight: bold;
+      border-color: #0068ff;
+    }
+
+    #bmiBox { margin-top:10px; display: flex; gap:10px; }
+    #bmiBox input { width:50%; padding: 8px; border-radius:6px; border:1px solid #ccc;}
+
+    #score-box { margin-top: 25px; text-align: center; font-size: 20px; font-weight:bold; }
+    #stars { font-size: 26px; color: gold; text-align:center; margin-top: 8px; }
+
+    button#checkBtn {
+      width: 100%;
+      padding: 14px;
+      background: #0068ff;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 17px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+
+    #chart-container { margin-top: 35px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>건강 점수 계산기</h2>
+
+  <label>이름</label>
+  <input type="text" id="name" placeholder="이름을 입력하세요" style="width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #ccc;">
+
+  <!-- 점수 선택 영역 -->
+  <div class="group">
+    <label>흡연</label>
+    <div class="options" data-group="흡연">
+      <button class="option-btn" data-score="3">담배 핀다</button>
+      <button class="option-btn" data-score="5">담배 안핀다</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <label>걸음수</label>
+    <div class="options" data-group="걸음수">
+      <button class="option-btn" data-score="1">&lt;2000</button>
+      <button class="option-btn" data-score="2">2000–5000</button>
+      <button class="option-btn" data-score="3">5000–8000</button>
+      <button class="option-btn" data-score="4">8000–12000</button>
+      <button class="option-btn" data-score="5">&ge;12000</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <label>LDL</label>
+    <div class="options" data-group="LDL">
+      <button class="option-btn" data-score="1">&ge;190</button>
+      <button class="option-btn" data-score="2">160–189</button>
+      <button class="option-btn" data-score="3">130–159</button>
+      <button class="option-btn" data-score="4">100–129</button>
+      <button class="option-btn" data-score="5">&lt;100</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <label>혈압</label>
+    <div class="options" data-group="혈압">
+      <button class="option-btn" data-score="1">&ge;160/100</button>
+      <button class="option-btn" data-score="2">140/90–159/99</button>
+      <button class="option-btn" data-score="3">130/85–139/89</button>
+      <button class="option-btn" data-score="4">120/80–129/84</button>
+      <button class="option-btn" data-score="5">&lt;120/80</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <label>BMI</label>
+    <div id="bmiBox">
+      <input type="number" id="weight" placeholder="체중 (kg)">
+      <input type="number" id="height" placeholder="신장 (cm)">
+    </div>
+    <div class="options" data-group="BMI" style="margin-top:10px;">
+      <button class="option-btn" data-score="5">정상 (18.5–25)</button>
+      <button class="option-btn" data-score="4">&lt;18.5 또는 25–30</button>
+      <button class="option-btn" data-score="3">30–35</button>
+      <button class="option-btn" data-score="2">35–40</button>
+      <button class="option-btn" data-score="1">&ge;40</button>
+    </div>
+  </div>
+
+  <!-- 현재 점수 표시 -->
+  <div id="score-box">총점: -</div>
+  <div id="stars"></div>
+
+  <button id="checkBtn">건강점수 확인하기</button>
+
+  <div id="chart-container">
+    <canvas id="chart"></canvas>
+  </div>
+
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/********** ★ 반드시 본인 스크립트 URL로 변경 ★ **********/
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxCrGwDISQh1VEL92ku0cMPoy7eY9m4768NiQZzBV3uxDS1rVj9YGJEMle5HDt7ngGn/exec";
+
+/********** 버튼 선택 UI **********/
+document.querySelectorAll(".options").forEach(group=>{
+  group.addEventListener("click",e=>{
+    if(!e.target.classList.contains("option-btn"))return;
+    [...group.children].forEach(btn=>btn.classList.remove("selected"));
+    e.target.classList.add("selected");
+    updateScoreUI();
+  });
+});
+
+/********** 점수 계산 → UI 즉시 갱신 **********/
+function updateScoreUI(){
+  const groups=["흡연","걸음수","LDL","혈압","BMI"];
+  let sum=0;
+  groups.forEach(g=>{
+    const sel=document.querySelector(`.options[data-group="${g}"] .selected`);
+    if(sel){ sum+=Number(sel.dataset.score); }
+  });
+
+  document.getElementById("score-box").innerText = "총점: " + sum + "점";
+  document.getElementById("stars").innerHTML = "★".repeat(sum) + "☆".repeat(25-sum);
+}
+
+/********** 버튼 클릭 → 저장 + 그래프 표시 **********/
+document.getElementById("checkBtn").addEventListener("click",async()=>{
+  const name=document.getElementById("name").value.trim();
+  if(!name)return alert("이름을 입력하세요!");
+
+  const groups=["흡연","걸음수","LDL","혈압","BMI"];
+  let scores={};
+  for(let g of groups){
+    const sel=document.querySelector(`.options[data-group="${g}"] .selected`);
+    if(!sel)return alert(`${g} 항목을 선택해주세요!`);
+    scores[g]=Number(sel.dataset.score);
+  }
+
+  const totalScore = scores.흡연 + scores.걸음수 + scores.LDL + scores.혈압 + scores.BMI;
+
+  /* 🔧 여기 부분만 수정됨 (한글 key → 영문 key 매핑) */
+  await fetch(SCRIPT_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      mode: "save",
+      name,
+      smoking: scores["흡연"],
+      steps: scores["걸음수"],
+      ldl: scores["LDL"],
+      bp: scores["혈압"],
+      bmi: scores["BMI"],
+      totalScore
+    })
+  });
+
+  alert(`총점 ${totalScore}점이 저장되었습니다.`);
+  loadChart(name);
+});
+
+/********** GET 조회 → 그래프 생성 **********/
+async function loadChart(name){
+  const res=await fetch(`${SCRIPT_URL}?mode=get&name=${encodeURIComponent(name)}`);
+  const json=await res.json();
+  if(json.status!=="ok")return;
+
+  const byDate={};
+  json.data.forEach(d=>{
+    if(!byDate[d.date] || d.totalScore > byDate[d.date]) byDate[d.date]=d.totalScore;
+  });
+
+  const rows=Object.entries(byDate).sort((a,b)=>a[0]>b[0]?1:-1);
+  const sliced=rows.slice(-4);
+  const labels=sliced.map(r=>r[0]);
+  const scores=sliced.map(r=>r[1]);
+
+  drawChart(labels,scores);
+}
+
+/********** 차트 렌더링 **********/
+let chart;
+function drawChart(labels,scores){
+  const ctx=document.getElementById("chart").getContext("2d");
+  if(chart)chart.destroy();
+  chart=new Chart(ctx,{
+    type:"line",
+    data:{ labels, datasets:[{label:"건강 점수 변화",data:scores,borderWidth:2,borderColor:"#0068ff",tension:0.2}] }
+  });
+}
+</script>
+
+</body>
+</html>
